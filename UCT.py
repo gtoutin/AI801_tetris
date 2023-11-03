@@ -7,12 +7,26 @@
 # not simply going thru all possible next states and choosing the best one.
 # spawns new games after each action, counts up the scores of each game and decides which is best?
 
+import random
+from . import Tetris, tetronimoes
+
+
+global PIECES
+PIECES = ['O', 'Zh', 'Zv', 'Sh', 'Sv', 'Ih', 'Iv']
+for piece in ['J', 'T', 'L']:
+    for direction in ['u', 'd', 'l', 'r']:
+        PIECES.append(piece+direction)
+global BOARD_WIDTH
+BOARD_WIDTH = 10
+global BOARD_HEIGHT
+BOARD_HEIGHT = 20
 
 class UCTTetrisSolver:
     def __init__(self, board):
+        # current board. copy this when doing calculations instead of modifying this copy
         self.board = board
 
-    def get_adjacent_block(self, location, direction):
+    def get_adjacent_block(self, board, location, direction):
         '''Given a location (i,j tuple) and a direction (up, down, left, right),
         check the block in that direction and 
         return 1 if that block is occupied or out of bounds and return 0 if that block is free.
@@ -21,13 +35,13 @@ class UCTTetrisSolver:
         j = location[1]
         try:
             if direction == "up":
-                return self.board[i-1][j]
+                return board[i-1][j]
             elif direction == "down":
-                return self.board[i+1][j]
+                return board[i+1][j]
             elif direction == "left":
-                return self.board[i][j-1]
+                return board[i][j-1]
             elif direction == "right":
-                return self.board[i][j+1]
+                return board[i][j+1]
             else:
                 raise ValueError("direction is not up, down, left, or right.")
         except IndexError:
@@ -39,25 +53,91 @@ class UCTTetrisSolver:
                 return 0
             return 1
     
-    def num_completed_rows():
+    def num_completed_rows(self, board):
         '''Return number of rows that are completed'''
         num_completed = 0
-        for row in self.board:
+        for row in board:
             num_completed += all(row)
         return num_completed
     
-    def num_holes():
+    def num_holes(self, board):
         '''Return number of holes in the board'''
         num_holes = 0
-        for i, row in self.state[0]:
+        for i, row in board:
             for j, block in row:
                 # solid blocks aren't holes
                 if board[i,j] == 1:
                     continue
                 # test every direction around the current empty block. if all are solid blocks/walls, then this is a hole
-                is_hole = all([self.get_adjacent_block((i,j), direction for direction in ["up", "down", "left", "right"]])
+                is_hole = all([self.get_adjacent_block(board, (i,j), direction) for direction in ["up", "down", "left", "right"]])
                 num_holes += is_hole
         return num_holes
-    
-    def score_state(self):
+
+    def score_state(self, board):
         '''Calculate the utility of a given state.'''
+        # number of wells is bad bc they can only be removed w i piece
+        # height of cols
+        # diff in height of cols on board
+        return self.num_completed_rows(board) - 2 * self.num_holes(board)
+        
+    def place_piece(self, piece, board, location):
+        '''Return a board with the piece placed at the specified location.'''
+        # TODO: create dictionary that maps piece type to an 8x8 mask
+            # i say 4x4 bc the I tetronimo is 4 in a row and it can go vert or horz
+            # i did O Ih Iv so far
+        # fetch 8x8 mask
+        mask = tetronimoes.TETRO_MASKS[piece]
+        # overlay mask on board at location
+            # ASSUMING location given is where top left is placed
+        # check for any errors
+        for x in range(4):
+            for y in range(4):
+                try:
+                    # ASSUMING piece is placed in empty location
+                    board[location+x][location+y] += mask[x][y]
+                finally:
+                    print("something is wrong, tried to place piece hanging off the board")
+                    continue
+        # return that board
+        return board
+
+    def drop_piece(self, piece, board, y):
+        '''Drops a piece into the board at the specified horizontal (y) location'''
+        # overhang issue? ignoring for now since it isn't strictly necessary
+        # down is x+1, right is y+1
+        for x in range(BOARD_HEIGHT):
+            if Tetris.CollisionDetection(board, piece, (x, y)):
+                break
+            else:
+                # save board state so it will be accurate when collision is detected
+                board = self.place_piece(piece, board, (x,y))
+        return board
+
+    def run_sim(self, board):
+        '''Run a sim. 5 pieces ahead. The state passed in has the current 
+        piece already placed, so start with the next piece.'''
+        # get next piece
+        # get 3 more random pieces
+        pieces = [self.state.next_piece]
+        # randomly rotate next too?
+        for i in range(3):
+            pieces.append(random.choice(PIECES))
+
+        # for each piece, drop them in random places
+        board = self.drop_piece(piece, board, random.randint(0,BOARD_WIDTH-1))
+        # return the score
+        return self.score_state(board)
+
+    def run(self):
+        # TODO call run_sim for each possible placement of the current piece
+        # return ALL possible moves ranked by score if A* says not possible
+        # brute force each of the 5 pieces and then score
+        # use formula
+        pass
+
+# generate all possible end states for a given piece
+# for each state, run 10 sims throwing next piece and 3 more random pieces in random spots
+# for each state, find the mean score
+# choose the state with the highest score as the best spot
+
+# where is each piece centered? need to discuss this
