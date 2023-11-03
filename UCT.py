@@ -21,6 +21,16 @@ BOARD_WIDTH = 10
 global BOARD_HEIGHT
 BOARD_HEIGHT = 20
 
+def get_rotations(piece):
+    '''Given a piece, return list of pieces that it will become when rotated'''
+    if piece[0] == "O":
+        return ["O"]
+    if piece[0] in ["Z", "S", "I"]:
+        return [piece[0]+rot for rot in ['h','v']]
+    if piece[0] in ['J', 'T', 'L']:
+        return [piece[0]+rot for rot in ['u', 'd', 'l', 'r']]
+
+
 class UCTTetrisSolver:
     def __init__(self, board):
         # current board. copy this when doing calculations instead of modifying this copy
@@ -85,7 +95,7 @@ class UCTTetrisSolver:
         # TODO: create dictionary that maps piece type to an 8x8 mask
             # i say 4x4 bc the I tetronimo is 4 in a row and it can go vert or horz
             # i did O Ih Iv so far
-        # fetch 8x8 mask
+        # fetch 4x4 mask
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
             # ASSUMING location given is where top left is placed
@@ -105,13 +115,14 @@ class UCTTetrisSolver:
         '''Drops a piece into the board at the specified horizontal (y) location'''
         # overhang issue? ignoring for now since it isn't strictly necessary
         # down is x+1, right is y+1
+        location = (0,y)
         for x in range(BOARD_HEIGHT):
             if Tetris.CollisionDetection(board, piece, (x, y)):
                 break
             else:
                 # save board state so it will be accurate when collision is detected
                 board = self.place_piece(piece, board, (x,y))
-        return board
+        return board, location
 
     def run_sim(self, board):
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
@@ -128,16 +139,42 @@ class UCTTetrisSolver:
         # return the score
         return self.score_state(board)
 
-    def run(self):
-        # TODO call run_sim for each possible placement of the current piece
+    def run(self, curr_piece, curr_board):
+        '''Returns piece and location of highest score'''
+        # NOTE: what would be best? board state mapped to score or (piece, location x,y) mapped to score?
+
+        best_move = {
+            "piece": curr_piece,
+            "location": (-1, -1),
+            "score": -1000
+        }
+        # call run_sim for each possible placement/rotation of the current piece
+        # get rotations of current piece
+        for piece in get_rotations(curr_piece):
+            # for each horizontal location it can be dropped in
+            # ASSUMING the dropping function will take care of invalid input
+            for y in range(BOARD_WIDTH):
+                # drop the piece in
+                board, location = self.drop_piece(piece, curr_board, y)
+                # run one or 10 or whatever number of sims
+                scores = [self.run_sim(board) for _ in range(10)]
+                # average the scores
+                avg_score = sum(scores)/len(scores)
+                # if this score is better than current score, store this move
+                if avg_score > best_move['score']:
+                    best_move = {
+                        "piece": piece,
+                        "location": location,
+                        "score": avg_score
+                    }
         # return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
-        pass
+        return best_move
 
 # generate all possible end states for a given piece
 # for each state, run 10 sims throwing next piece and 3 more random pieces in random spots
 # for each state, find the mean score
 # choose the state with the highest score as the best spot
 
-# where is each piece centered? need to discuss this
+# where is each piece centered? need to discuss this. currently assuming top left (smallest x and y)
