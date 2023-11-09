@@ -8,7 +8,7 @@
 # spawns new games after each action, counts up the scores of each game and decides which is best?
 
 import random
-from . import Tetris, tetronimoes
+import Tetris, tetronimoes
 
 
 global PIECES
@@ -20,6 +20,8 @@ global BOARD_WIDTH
 BOARD_WIDTH = 10
 global BOARD_HEIGHT
 BOARD_HEIGHT = 20
+
+random.seed(1)
 
 def get_rotations(piece):
     '''Given a piece, return list of pieces that it will become when rotated'''
@@ -73,38 +75,42 @@ class UCTTetrisSolver:
     def num_holes(self, board):
         '''Return number of holes in the board'''
         num_holes = 0
-        for i, row in board:
-            for j, block in row:
+        for i, row in enumerate(board):
+            for j, block in enumerate(row):
                 # solid blocks aren't holes
-                if board[i,j] == 1:
+                if block == 1:
                     continue
                 # test every direction around the current empty block. if all are solid blocks/walls, then this is a hole
                 is_hole = all([self.get_adjacent_block(board, (i,j), direction) for direction in ["up", "down", "left", "right"]])
                 num_holes += is_hole
         return num_holes
 
+    def block_height(self, board):
+        '''Return height of blocks placed on board. Higher number is worse'''
+        for i, row in enumerate(board):
+            if 1 in row:
+                return BOARD_HEIGHT - i
+
     def score_state(self, board):
         '''Calculate the utility of a given state.'''
         # number of wells is bad bc they can only be removed w i piece
         # height of cols
         # diff in height of cols on board
-        return self.num_completed_rows(board) - 2 * self.num_holes(board)
+        return self.num_completed_rows(board) - 2 * self.num_holes(board) - self.block_height(board)
         
     def place_piece(self, piece, board, location):
         '''Return a board with the piece placed at the specified location.'''
-        # TODO: create dictionary that maps piece type to an 8x8 mask
-            # i say 4x4 bc the I tetronimo is 4 in a row and it can go vert or horz
-            # i did O Ih Iv so far
         # fetch 4x4 mask
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
-            # ASSUMING location given is where top left is placed
         # check for any errors
-        for x in range(4):
-            for y in range(4):
+        for row in range(4):
+            for col in range(4):
                 try:
                     # ASSUMING piece is placed in empty location
-                    board[location+x][location+y] += mask[x][y]
+                    trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+                    # it's -trans_rowcol because we are moving the board, not the piece
+                    board[location+row-trans_rowcol[0]][location+col-trans_rowcol[1]] += mask[row][col]
                 finally:
                     print("something is wrong, tried to place piece hanging off the board")
                     continue
@@ -176,5 +182,3 @@ class UCTTetrisSolver:
 # for each state, run 10 sims throwing next piece and 3 more random pieces in random spots
 # for each state, find the mean score
 # choose the state with the highest score as the best spot
-
-# where is each piece centered? need to discuss this. currently assuming top left (smallest x and y)
