@@ -1,4 +1,5 @@
 import heapq
+import copy
 
 """
 TetrisGameState.get_initial_node(): Create and return the initial game state node.
@@ -13,10 +14,6 @@ These methods and functions will depend on the specific rules and representation
 class TetrisGameState:
     def __init__(self, board):
         self.board = board  # The game board
-
-    def get_initial_node(self):
-        # Create and return the initial game state node
-        pass
 
     def is_goal(self, node):
         # Check if the node represents a goal state
@@ -46,43 +43,62 @@ class TetrisNode:
 
 # Class to solve Tetris using the A* algorithm
 class AStarTetrisSolver:
-    def __init__(self, game_state):
-        self.game_state = game_state  # The game state representation
+    def __init__(self, start_state, goal_state):
+        self.start_state = start_state  # The game state representation
+        self.goal_node = goal_state
         self.open_set = []  # Priority queue for open set of nodes
         self.closed_set = set()  # Set to store visited nodes
         self.path = []  # Path representing the solution
 
     def solve(self):
-        start_node = self.game_state.get_initial_node()
-        heapq.heappush(self.open_set, (start_node.cost, start_node))
+        start_node = copy.deepcopy(self.start_state)
+        
+        heapq.heappush(self.open_set, (0, start_node))
 
         while self.open_set:
             current_cost, current_node = heapq.heappop(self.open_set)
+            print(current_node)
 
-            if self.game_state.is_goal(current_node):
-                return self.reconstruct_path(current_node)
+            if current_node.is_goal(self.goal_node):
+                #print(current_node.parent)
+                path = self.reconstruct_path(current_node)
+                #print(path)
+                return path
+                
 
             self.closed_set.add(current_node)
 
             for neighbor_node in current_node.generate_neighbors():
-                if neighbor_node in self.closed_set:
+                if neighbor_node in self.closed_set or neighbor_node.f_score >= 9999:
                     continue
 
-                tentative_g_score = current_node.g_score + self.game_state.calculate_move_cost(current_node, neighbor_node)
+                tentative_g_score = current_node.g_score + 1 #self.game_state.calculate_move_cost(current_node, neighbor_node)
 
                 if neighbor_node not in self.open_set or tentative_g_score < neighbor_node.g_score:
                     neighbor_node.g_score = tentative_g_score
-                    neighbor_node.f_score = tentative_g_score + self.game_state.calculate_heuristic(neighbor_node)
+                    neighbor_node.f_score = tentative_g_score + neighbor_node.heuristic(self.goal_node)
                     neighbor_node.parent = current_node
 
                     if neighbor_node not in self.open_set:
                         heapq.heappush(self.open_set, (neighbor_node.f_score, neighbor_node))
 
-        return None
+        return self.closed_set
 
     def reconstruct_path(self, node):
+        #print(node)
+        #print(node.parent)
+        #print(node.previousaction)
+        print(node.softdrop)
         path = []
-        while node is not None:
-            path.insert(0, node)
+        path.append(['NOOP'])
+        for i in range(0, 3 - node.softdrop):
+            path.append(['down'])
+        while node.parent is not None:
+            path.append(node.previousaction)
             node = node.parent
+            #print(path)
+        #print(path)
+        path.reverse()
         return path
+
+    
