@@ -34,9 +34,11 @@ def get_rotations(piece):
 
 
 class UCTTetrisSolver:
-    def __init__(self, board):
+    def __init__(self, board, state):
         # current board. copy this when doing calculations instead of modifying this copy
         self.board = board
+        # state must contain next_piece
+        self.state = state
 
     def get_adjacent_block(self, board, location, direction):
         '''Given a location (i,j tuple) and a direction (up, down, left, right),
@@ -128,26 +130,30 @@ class UCTTetrisSolver:
             else:
                 # save board state so it will be accurate when collision is detected
                 board = self.place_piece(piece, board, (x,y))
+        
+        # subtract tetro_trans value for this piece to account for center
+        trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+        location = [location[0]-trans_rowcol[0], location[1]-trans_rowcol[1]]
         return board, location
 
     def run_sim(self, board):
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
         piece already placed, so start with the next piece.'''
         # get next piece
-        # get 3 more random pieces
         pieces = [self.state.next_piece]
-        # randomly rotate next too?
-        for i in range(3):
+        # get 3 more random pieces
+        for _ in range(3):
             pieces.append(random.choice(PIECES))
-
+        
         # for each piece, drop them in random places
-        board = self.drop_piece(piece, board, random.randint(0,BOARD_WIDTH-1))
+        for piece in pieces:
+            board = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
+
         # return the score
         return self.score_state(board)
 
     def run(self, curr_piece, curr_board):
         '''Returns piece and location of highest score'''
-        # NOTE: what would be best? board state mapped to score or (piece, location x,y) mapped to score?
 
         best_move = {
             "piece": curr_piece,
@@ -173,7 +179,7 @@ class UCTTetrisSolver:
                         "location": location,
                         "score": avg_score
                     }
-        # return ALL possible moves ranked by score if A* says not possible
+        # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
         return best_move
