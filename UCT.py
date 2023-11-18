@@ -8,8 +8,9 @@
 # spawns new games after each action, counts up the scores of each game and decides which is best?
 
 import random
-import Tetris, tetronimoes
-
+import tetronimoes
+from CollisionDetection import CollisionDetection
+import copy
 
 global PIECES
 PIECES = ['O', 'Zh', 'Zv', 'Sh', 'Sv', 'Ih', 'Iv']
@@ -89,8 +90,13 @@ class UCTTetrisSolver:
 
     def block_height(self, board):
         '''Return height of blocks placed on board. Higher number is worse'''
+        #print(board)
         for i, row in enumerate(board):
+            #print(i)
+            #print(row)
             if 1 in row:
+                #print(BOARD_HEIGHT)
+                #print(i)
                 return BOARD_HEIGHT - i
 
     def score_state(self, board):
@@ -98,11 +104,14 @@ class UCTTetrisSolver:
         # number of wells is bad bc they can only be removed w i piece
         # height of cols
         # diff in height of cols on board
-        return self.num_completed_rows(board) - 2 * self.num_holes(board) - self.block_height(board)
+        temp = self.num_completed_rows(board) - 2 * self.num_holes(board)
+        #print(temp)
+        return temp - self.block_height(board)
         
     def place_piece(self, piece, board, location):
         '''Return a board with the piece placed at the specified location.'''
         # fetch 4x4 mask
+        b = copy.deepcopy(board)
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
         # check for any errors
@@ -112,25 +121,29 @@ class UCTTetrisSolver:
                     # ASSUMING piece is placed in empty location
                     trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
                     # it's -trans_rowcol because we are moving the board, not the piece
-                    board[location+row-trans_rowcol[0]][location+col-trans_rowcol[1]] += mask[row][col]
-                finally:
-                    print("something is wrong, tried to place piece hanging off the board")
+                    b[location+row-trans_rowcol[0]][location+col-trans_rowcol[1]] += mask[row][col]
+                except: #finally:
+                    #print("something is wrong, tried to place piece hanging off the board")
                     continue
         # return that board
-        return board
+        return b
 
-    def drop_piece(self, piece, board, y):
+    def drop_piece(self, piece, board, x):
         '''Drops a piece into the board at the specified horizontal (y) location'''
         # overhang issue? ignoring for now since it isn't strictly necessary
-        # down is x+1, right is y+1
-        location = (0,y)
-        for x in range(BOARD_HEIGHT):
-            if Tetris.CollisionDetection(board, piece, (x, y)):
-                break
-            else:
+        # down is y+1, right is x+1
+        location = (x,0)
+        for y in reversed(range(BOARD_HEIGHT)):
+            #print(y)
+            if CollisionDetection(board, piece, (x, y)):
                 # save board state so it will be accurate when collision is detected
                 board = self.place_piece(piece, board, (x,y))
-        
+                #print("break")
+                break
+                
+                
+                
+        #print(board)
         # subtract tetro_trans value for this piece to account for center
         trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
         location = [location[0]-trans_rowcol[0], location[1]-trans_rowcol[1]]
@@ -150,7 +163,8 @@ class UCTTetrisSolver:
             board = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
 
         # return the score
-        return self.score_state(board)
+        #print(board[0][0][0][0])
+        return self.score_state(board[0][0][0][0])
 
     def run(self, curr_piece, curr_board):
         '''Returns piece and location of highest score'''
@@ -162,12 +176,13 @@ class UCTTetrisSolver:
         }
         # call run_sim for each possible placement/rotation of the current piece
         # get rotations of current piece
+        #print(curr_piece)
         for piece in get_rotations(curr_piece):
             # for each horizontal location it can be dropped in
             # ASSUMING the dropping function will take care of invalid input
-            for y in range(BOARD_WIDTH):
+            for x in range(BOARD_WIDTH):
                 # drop the piece in
-                board, location = self.drop_piece(piece, curr_board, y)
+                board, location = self.drop_piece(piece, curr_board, x)
                 # run one or 10 or whatever number of sims
                 scores = [self.run_sim(board) for _ in range(10)]
                 # average the scores

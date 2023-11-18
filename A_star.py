@@ -57,7 +57,7 @@ class AStarTetrisSolver:
 
         while self.open_set:
             current_cost, current_node = heapq.heappop(self.open_set)
-            print(current_node)
+            #print(current_node)
 
             if current_node.is_goal(self.goal_node):
                 #print(current_node.parent)
