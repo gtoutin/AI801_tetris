@@ -109,45 +109,67 @@ class UCTTetrisSolver:
         return temp - self.block_height(board)
         
     def place_piece(self, piece, board, location):
-        '''Return a board with the piece placed at the specified location.'''
+        '''Return a board with the piece placed at the specified location. Takes (x,y) location.
+        Returns original board if there is an error placing the piece. Returns ok bool'''
+        # save board in case placing piece fails
+        old_board = copy.deepcopy(board)
         # fetch 4x4 mask
-        b = copy.deepcopy(board)
+        # breakpoint()
+        # mask is list of lists
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
         # check for any errors
+        # convert all to (row,col) bc that's how python indexing works
+        location = tetronimoes.conv_xy_rowcol(location)
+        trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
         for row in range(4):
             for col in range(4):
                 try:
                     # ASSUMING piece is placed in empty location
-                    trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
                     # it's -trans_rowcol because we are moving the board, not the piece
-                    b[location+row-trans_rowcol[0]][location+col-trans_rowcol[1]] += mask[row][col]
-                except: #finally:
-                    #print("something is wrong, tried to place piece hanging off the board")
-                    continue
+                    new_row, new_col = location[0]+row-trans_rowcol[0], location[1]+col-trans_rowcol[1]
+                    board[new_row][new_col] += mask[row][col]
+                except IndexError: #finally:
+                    # breakpoint()
+                    print(f"tried to place {piece} at {tetronimoes.conv_xy_rowcol((new_row, new_col))}")
+                    return old_board, False
+        print(f"placed piece {piece}")
+        
+        # sanity checks
+        assert(board != old_board)
+        # didn't overlap this piece with others
+        assert(all(2 not in row for row in board))
         # return that board
-        return b
+        return board, True
 
     def drop_piece(self, piece, board, x):
-        '''Drops a piece into the board at the specified horizontal (y) location'''
+        '''Drops a piece into the board at the specified horizontal (x or col) location'''
         # overhang issue? ignoring for now since it isn't strictly necessary
+
+        # save old board in case piece cannot be placed
+        old_board = copy.deepcopy(board)
+
         # down is y+1, right is x+1
         location = (x,0)
         for y in reversed(range(BOARD_HEIGHT)):
             #print(y)
             if CollisionDetection(board, piece, (x, y)):
+                # breakpoint()
                 # save board state so it will be accurate when collision is detected
-                board = self.place_piece(piece, board, (x,y))
+                board, ok = self.place_piece(piece, board, (x,y))
+                # if error, piece cannot be placed
+                if not ok:
+                    return old_board, location, ok
+                # breakpoint()
                 #print("break")
                 break
-                
-                
                 
         #print(board)
         # subtract tetro_trans value for this piece to account for center
         trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+        location = tetronimoes.conv_xy_rowcol(location)
         location = [location[0]-trans_rowcol[0], location[1]-trans_rowcol[1]]
-        return board, location
+        return board, location, True
 
     def run_sim(self, board):
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
@@ -160,14 +182,20 @@ class UCTTetrisSolver:
         
         # for each piece, drop them in random places
         for piece in pieces:
-            board = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
+            # random choice of place won't work all the time. try again until it does
+            ok = False
+            while not ok:
+                b = copy.deepcopy(board)
+                board, location, ok = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
 
         # return the score
         #print(board[0][0][0][0])
-        return self.score_state(board[0][0][0][0])
+        # breakpoint()
+        return self.score_state(board)
 
     def run(self, curr_piece, curr_board):
         '''Returns piece and location of highest score'''
+        curr_board = tuple_to_list_board(curr_board)
 
         best_move = {
             "piece": curr_piece,
@@ -177,16 +205,26 @@ class UCTTetrisSolver:
         # call run_sim for each possible placement/rotation of the current piece
         # get rotations of current piece
         #print(curr_piece)
+        
         for piece in get_rotations(curr_piece):
             # for each horizontal location it can be dropped in
             # ASSUMING the dropping function will take care of invalid input
             for x in range(BOARD_WIDTH):
                 # drop the piece in
-                board, location = self.drop_piece(piece, curr_board, x)
+                for row in curr_board:
+                    print(row)
+                board, location, ok = self.drop_piece(piece, curr_board, x)
+                for row in board:
+                    print(row)
+                # breakpoint()
+                # could try to drop in invalid place
+                if not ok:
+                    continue
                 # run one or 10 or whatever number of sims
-                scores = [self.run_sim(board) for _ in range(10)]
+                scores = [self.run_sim(board) for _ in range(1)]
                 # average the scores
                 avg_score = sum(scores)/len(scores)
+                print(piece, x, avg_score, location)
                 # if this score is better than current score, store this move
                 if avg_score > best_move['score']:
                     best_move = {
@@ -194,6 +232,8 @@ class UCTTetrisSolver:
                         "location": location,
                         "score": avg_score
                     }
+                    print("better move found")
+                    print(x, best_move, piece, curr_piece)
         # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
@@ -203,3 +243,10 @@ class UCTTetrisSolver:
 # for each state, run 10 sims throwing next piece and 3 more random pieces in random spots
 # for each state, find the mean score
 # choose the state with the highest score as the best spot
+
+def tuple_to_list_board(board):
+    '''Convert tuple of tuples to list of lists. Creates deep copy.'''
+    b = []
+    for row in board:
+        b.append(list(row))
+    return b
