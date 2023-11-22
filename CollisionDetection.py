@@ -6,7 +6,9 @@ def CY(var):
 def CollisionDetection(boardstate, currentpiece, piecelocation):
     x = int(piecelocation[0])
     y = int(piecelocation[1])
-
+    print(x,y)
+    print(x-1)
+    print(boardstate[11][-1])
     try:
         if currentpiece == "O":
             if boardstate[y][x] == 0 and boardstate[CY(y+1)][x] == 0 and boardstate[CY(y)][x-1] == 0 and boardstate[CY(y+1)][x-1] == 0:

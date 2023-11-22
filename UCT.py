@@ -9,7 +9,7 @@
 
 import random
 import tetronimoes
-from CollisionDetection import CollisionDetection
+#from CollisionDetection import CollisionDetection
 import copy
 
 global PIECES
@@ -23,6 +23,34 @@ global BOARD_HEIGHT
 BOARD_HEIGHT = 20
 
 random.seed(1)
+
+def LocBoard(x,y):
+    if 0 <= x and x < 10 and 0 <= y and y < 20:
+        return True
+    return False
+
+def CollisionDetection(board, currentpiece, piecelocation):
+    mask = tetronimoes.TETRO_MASKS[currentpiece]
+    #Piecelocation is assumed to be the top left portion of the mask, as found by tetronimoes.TETRO_TRANS
+    #It is also assumed to be in the format (x,y)
+    #As such, it needs to be reversed for board purposes.
+    #location = tetronimoes.conv_xy_rowcol(piecelocation)
+    location = piecelocation
+    if location[0] == 4:
+        print(location)
+    for row in range(0, 4):
+        for col in range(0,4):
+            x = location[0] + row
+            y = location[1] + col
+            #print(LocBoard(x,y), x, y)
+            if (not LocBoard(x,y)) or board[y][x] >= 1:
+                #print(currentpiece, piecelocation, row, col)
+                if mask[col][row] >= 1:
+                    return False
+    return True
+            
+            
+    
 
 def get_rotations(piece):
     '''Given a piece, return list of pieces that it will become when rotated'''
@@ -143,9 +171,9 @@ class UCTTetrisSolver:
         # sanity checks
         assert(board != old_board)
         # didn't overlap this piece with others
-        #for row in board:
-            #print(row)
-        #print()
+        for row in board:
+            print(row)
+        print()
         assert(all(2 not in row for row in board))
         # return that board
         return board, True
@@ -161,11 +189,11 @@ class UCTTetrisSolver:
         location = (x,0)
         for y in reversed(range(BOARD_HEIGHT)):
             #print(y)
-            if CollisionDetection(board, piece, (x - tetronimoes.TETRO_TRANS[piece][0], y - tetronimoes.TETRO_TRANS[piece][1])):
+            if CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)):
                 # breakpoint()
                 # save board state so it will be accurate when collision is detected
                 print(tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)
-                board, ok = self.place_piece(piece, board, (x,y))
+                board, ok = self.place_piece(piece, board, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y))
                 # if error, piece cannot be placed
                 if not ok:
                     return old_board, location, ok
@@ -177,7 +205,7 @@ class UCTTetrisSolver:
         # subtract tetro_trans value for this piece to account for center
         trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
         location = tetronimoes.conv_xy_rowcol(location)
-        location = [location[0]-trans_rowcol[0], location[1]-trans_rowcol[1]]
+        location = [location[0], location[1]]
         return board, location, True
 
     def run_sim(self, board):
@@ -236,6 +264,8 @@ class UCTTetrisSolver:
                 # average the scores
                 avg_score = sum(scores)/len(scores)
                 print(piece, x, avg_score, location)
+                print(avg_score, best_move['score'])
+                print(avg_score > best_move['score'])
                 # if this score is better than current score, store this move
                 if avg_score > best_move['score']:
                     best_move = {
