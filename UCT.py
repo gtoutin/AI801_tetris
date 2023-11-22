@@ -116,18 +116,23 @@ class UCTTetrisSolver:
         # fetch 4x4 mask
         # breakpoint()
         # mask is list of lists
+        print(piece, location)
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
         # check for any errors
         # convert all to (row,col) bc that's how python indexing works
         location = tetronimoes.conv_xy_rowcol(location)
-        trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+        #print(location)
+        #trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+        #print(trans_rowcol)
         for row in range(4):
             for col in range(4):
                 try:
                     # ASSUMING piece is placed in empty location
                     # it's -trans_rowcol because we are moving the board, not the piece
-                    new_row, new_col = location[0]+row-trans_rowcol[0], location[1]+col-trans_rowcol[1]
+                    #new_row, new_col = location[0]+row-trans_rowcol[0], location[1]+col-trans_rowcol[1]
+                    new_row, new_col = location[0]+row, location[1]+col
+                    #print(new_row, new_col)
                     board[new_row][new_col] += mask[row][col]
                 except IndexError: #finally:
                     # breakpoint()
@@ -138,6 +143,9 @@ class UCTTetrisSolver:
         # sanity checks
         assert(board != old_board)
         # didn't overlap this piece with others
+        #for row in board:
+            #print(row)
+        #print()
         assert(all(2 not in row for row in board))
         # return that board
         return board, True
@@ -153,9 +161,10 @@ class UCTTetrisSolver:
         location = (x,0)
         for y in reversed(range(BOARD_HEIGHT)):
             #print(y)
-            if CollisionDetection(board, piece, (x, y)):
+            if CollisionDetection(board, piece, (x - tetronimoes.TETRO_TRANS[piece][0], y - tetronimoes.TETRO_TRANS[piece][1])):
                 # breakpoint()
                 # save board state so it will be accurate when collision is detected
+                print(tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)
                 board, ok = self.place_piece(piece, board, (x,y))
                 # if error, piece cannot be placed
                 if not ok:
@@ -202,6 +211,8 @@ class UCTTetrisSolver:
             "location": (-1, -1),
             "score": -1000
         }
+        all_moves = []
+        all_moves.append(best_move)
         # call run_sim for each possible placement/rotation of the current piece
         # get rotations of current piece
         #print(curr_piece)
@@ -211,11 +222,11 @@ class UCTTetrisSolver:
             # ASSUMING the dropping function will take care of invalid input
             for x in range(BOARD_WIDTH):
                 # drop the piece in
-                for row in curr_board:
-                    print(row)
+                #for row in curr_board:
+                #    print(row)
                 board, location, ok = self.drop_piece(piece, curr_board, x)
-                for row in board:
-                    print(row)
+                #for row in board:
+                #    print(row)
                 # breakpoint()
                 # could try to drop in invalid place
                 if not ok:
@@ -232,12 +243,13 @@ class UCTTetrisSolver:
                         "location": location,
                         "score": avg_score
                     }
+                    #print(all_moves)
                     print("better move found")
                     print(x, best_move, piece, curr_piece)
         # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
-        return best_move
+        return all_moves
 
 # generate all possible end states for a given piece
 # for each state, run 10 sims throwing next piece and 3 more random pieces in random spots

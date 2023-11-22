@@ -49,7 +49,7 @@ def CollisionDetection(boardstate, currentpiece, piecelocation):
             else:
                 return False
         elif currentpiece == "Sh":
-            if boardstate[y][x] == 0 and boardstate[CY(y)][x+1] == 0 and boardstate[CY(y+1)][x] == 0 and boardstate[CY(y+1)][x+1] == 0:
+            if boardstate[y][x] == 0 and boardstate[CY(y)][x+1] == 0 and boardstate[CY(y+1)][x] == 0 and boardstate[CY(y+1)][x-1] == 0:
                 return True
             else:
                 return False
@@ -89,7 +89,7 @@ def CollisionDetection(boardstate, currentpiece, piecelocation):
             else:
                 return False
         elif currentpiece == "Ld":
-            if boardstate[y][x] == 0 and boardstate[CY(y)][x+1] == 0 and boardstate[CY(y)][x-1] == 0 and boardstate[CY(y-1)][x-1] == 0:
+            if boardstate[y][x] == 0 and boardstate[CY(y)][x+1] == 0 and boardstate[CY(y)][x-1] == 0 and boardstate[CY(y+1)][x-1] == 0:
                 return True
             else:
                 return False
