@@ -96,12 +96,12 @@ class UCTTetrisSolver:
                 return 0
             return 1
     
-    def num_completed_rows(self, board):
-        '''Return number of rows that are completed'''
-        num_completed = 0
-        for row in board:
-            num_completed += all(row)
-        return num_completed
+    #def num_completed_rows(self, board):
+    #    '''Return number of rows that are completed'''
+    #    num_completed = 0
+    #    for row in board:
+    #        num_completed += all(row)
+    #    return num_completed
     
     def num_holes(self, board):
         '''Return number of holes in the board'''
@@ -127,12 +127,12 @@ class UCTTetrisSolver:
                 #print(i)
                 return BOARD_HEIGHT - i
 
-    def score_state(self, board):
+    def score_state(self, board, num_completed):
         '''Calculate the utility of a given state.'''
         # number of wells is bad bc they can only be removed w i piece
         # height of cols
         # diff in height of cols on board
-        temp = self.num_completed_rows(board) - 2 * self.num_holes(board)
+        temp = (num_completed * 20) - 2 * self.num_holes(board)
         #print(temp)
         return temp - self.block_height(board)
         
@@ -166,13 +166,14 @@ class UCTTetrisSolver:
                     # breakpoint()
                     print(f"tried to place {piece} at {tetronimoes.conv_xy_rowcol((new_row, new_col))}")
                     return old_board, False
+              
         print(f"placed piece {piece}")
         
         # sanity checks
         assert(board != old_board)
         # didn't overlap this piece with others
-        for row in board:
-            print(row)
+        #for row in board:
+        #    print(row)
         print()
         assert(all(2 not in row for row in board))
         # return that board
@@ -186,29 +187,46 @@ class UCTTetrisSolver:
         old_board = copy.deepcopy(board)
 
         # down is y+1, right is x+1
-        location = (x,0)
+        location = (x,19)
+        ok = False
         for y in reversed(range(BOARD_HEIGHT)):
             #print(y)
             if CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)):
                 # breakpoint()
                 # save board state so it will be accurate when collision is detected
+                location = (x,y)
                 print(tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)
                 board, ok = self.place_piece(piece, board, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y))
                 # if error, piece cannot be placed
                 if not ok:
-                    return old_board, location, ok
+                    return old_board, location, ok, 0
                 # breakpoint()
                 #print("break")
                 break
-                
+        #breakpoint()        
         #print(board)
+        #for row in board:
+        #    print(row)
         # subtract tetro_trans value for this piece to account for center
+        new_board = tuple_to_list_board(board)
+        row = 0
+        num_completed = 0
+        while row < len(new_board):
+            num_completed += all(element == 1 for element in new_board[row])
+            if all(element == 1 for element in new_board[row]):
+                del new_board[row]
+            else:
+                row += 1
+        
+        while len(new_board) < 20:
+            new_board.insert(0,[0,0,0,0,0,0,0,0,0,0])
+        
         trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
         location = tetronimoes.conv_xy_rowcol(location)
-        location = [location[0], location[1]]
-        return board, location, True
+        #location = [location[0], location[1]]
+        return new_board, location, ok, num_completed
 
-    def run_sim(self, board):
+    def run_sim(self, board, num_completed):
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
         piece already placed, so start with the next piece.'''
         # get next piece
@@ -222,13 +240,13 @@ class UCTTetrisSolver:
             # random choice of place won't work all the time. try again until it does
             ok = False
             while not ok:
-                b = copy.deepcopy(board)
-                board, location, ok = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
+                board, location, ok, num_c = self.drop_piece(piece, board, random.randint(0, BOARD_WIDTH-1))
+            num_completed += num_c
 
         # return the score
         #print(board[0][0][0][0])
         # breakpoint()
-        return self.score_state(board)
+        return self.score_state(board, num_completed)
 
     def run(self, curr_piece, curr_board):
         '''Returns piece and location of highest score'''
@@ -239,6 +257,7 @@ class UCTTetrisSolver:
             "location": (-1, -1),
             "score": -1000
         }
+        num_completed = 0
         all_moves = []
         all_moves.append(best_move)
         # call run_sim for each possible placement/rotation of the current piece
@@ -252,15 +271,17 @@ class UCTTetrisSolver:
                 # drop the piece in
                 #for row in curr_board:
                 #    print(row)
-                board, location, ok = self.drop_piece(piece, curr_board, x)
+                board, location, ok, num_completed = self.drop_piece(piece, copy.deepcopy(curr_board), x)
+                
                 #for row in board:
                 #    print(row)
                 # breakpoint()
                 # could try to drop in invalid place
                 if not ok:
                     continue
+                assert(board != curr_board)
                 # run one or 10 or whatever number of sims
-                scores = [self.run_sim(board) for _ in range(1)]
+                scores = [self.run_sim(board, num_completed) for _ in range(10)]
                 # average the scores
                 avg_score = sum(scores)/len(scores)
                 print(piece, x, avg_score, location)
@@ -273,6 +294,7 @@ class UCTTetrisSolver:
                         "location": location,
                         "score": avg_score
                     }
+                    all_moves.append(best_move)
                     #print(all_moves)
                     print("better move found")
                     print(x, best_move, piece, curr_piece)

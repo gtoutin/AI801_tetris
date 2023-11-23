@@ -21,7 +21,7 @@ UCTTestBoard =   ((0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                   (1, 1, 1, 1, 0, 1, 1, 1, 1, 1), 
                   (1, 1, 1, 1, 0, 1, 1, 1, 1, 1))
 UCTPiece = "Jl"
-UCTNextPiece = "Iv"
+UCTNextPiece = "O"
 UCTGoalLocation = (4,18) #Jr
 
 class MacroState:

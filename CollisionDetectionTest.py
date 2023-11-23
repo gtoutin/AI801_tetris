@@ -1,4 +1,4 @@
-from CollisionDetection import CollisionDetection
+from UCT import CollisionDetection
 
 CollisionDetectionBoard = ((0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 
                   (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), 
@@ -20,4 +20,4 @@ CollisionDetectionBoard = ((0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
                   (1, 1, 1, 1, 0, 0, 1, 1, 1, 1), 
                   (1, 1, 1, 1, 0, 1, 1, 1, 1, 1), 
                   (1, 1, 1, 1, 0, 1, 1, 1, 1, 1))
-print(CollisionDetection(CollisionDetectionBoard, "Ju", (0,11)))
+print(CollisionDetection(CollisionDetectionBoard, "Jr", (4,17)))
