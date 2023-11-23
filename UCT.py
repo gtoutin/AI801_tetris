@@ -144,7 +144,9 @@ class UCTTetrisSolver:
         # fetch 4x4 mask
         # breakpoint()
         # mask is list of lists
-        print(piece, location)
+        #print(piece, location)
+        if location == (4,17):
+            print("Place_Piece: Location (4,17)")
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
         # check for any errors
@@ -160,14 +162,18 @@ class UCTTetrisSolver:
                     # it's -trans_rowcol because we are moving the board, not the piece
                     #new_row, new_col = location[0]+row-trans_rowcol[0], location[1]+col-trans_rowcol[1]
                     new_row, new_col = location[0]+row, location[1]+col
+                    if location == (4,17):
+                        print(new_row, new_col)
                     #print(new_row, new_col)
                     board[new_row][new_col] += mask[row][col]
                 except IndexError: #finally:
                     # breakpoint()
-                    print(f"tried to place {piece} at {tetronimoes.conv_xy_rowcol((new_row, new_col))}")
-                    return old_board, False
+                    if mask[row][col] == 1:
+                        #print(f"tried to place {piece} at {tetronimoes.conv_xy_rowcol((new_row, new_col))}")
+                    
+                        return old_board, False
               
-        print(f"placed piece {piece}")
+        #print(f"placed piece {piece}")
         
         # sanity checks
         assert(board != old_board)
@@ -195,7 +201,7 @@ class UCTTetrisSolver:
                 # breakpoint()
                 # save board state so it will be accurate when collision is detected
                 location = (x,y)
-                print(tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)
+                #print(tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)
                 board, ok = self.place_piece(piece, board, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y))
                 # if error, piece cannot be placed
                 if not ok:
@@ -221,8 +227,8 @@ class UCTTetrisSolver:
         while len(new_board) < 20:
             new_board.insert(0,[0,0,0,0,0,0,0,0,0,0])
         
-        trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
-        location = tetronimoes.conv_xy_rowcol(location)
+        #trans_rowcol = tetronimoes.conv_xy_rowcol(tetronimoes.TETRO_TRANS[piece])
+        #location = tetronimoes.conv_xy_rowcol(location)
         #location = [location[0], location[1]]
         return new_board, location, ok, num_completed
 
@@ -272,7 +278,10 @@ class UCTTetrisSolver:
                 #for row in curr_board:
                 #    print(row)
                 board, location, ok, num_completed = self.drop_piece(piece, copy.deepcopy(curr_board), x)
-                
+                if x == 4:
+                    print(piece)
+                    print(ok)
+                    print("Num Completed:" + str(num_completed))
                 #for row in board:
                 #    print(row)
                 # breakpoint()
@@ -284,9 +293,11 @@ class UCTTetrisSolver:
                 scores = [self.run_sim(board, num_completed) for _ in range(10)]
                 # average the scores
                 avg_score = sum(scores)/len(scores)
-                print(piece, x, avg_score, location)
-                print(avg_score, best_move['score'])
-                print(avg_score > best_move['score'])
+                
+                #print(piece, x, avg_score, location)
+                #print(avg_score, best_move['score'])
+                #print(avg_score > best_move['score'])
+                
                 # if this score is better than current score, store this move
                 if avg_score > best_move['score']:
                     best_move = {
@@ -296,8 +307,10 @@ class UCTTetrisSolver:
                     }
                     all_moves.append(best_move)
                     #print(all_moves)
-                    print("better move found")
-                    print(x, best_move, piece, curr_piece)
+                    
+                    #print("better move found")
+                    #print(x, best_move, piece, curr_piece)
+        
         # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
