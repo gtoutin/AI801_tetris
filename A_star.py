@@ -82,23 +82,32 @@ class AStarTetrisSolver:
                     if neighbor_node not in self.open_set:
                         heapq.heappush(self.open_set, (neighbor_node.f_score, neighbor_node))
 
-        return self.closed_set
+        return None
 
     def reconstruct_path(self, node):
         #print(node)
         #print(node.parent)
         #print(node.previousaction)
-        print(node.softdrop)
+        #print(node.softdrop)
         path = []
+        locpath = []
+        cppath = []
         path.append(['NOOP'])
+        locpath.append(node.piecelocation)
         for i in range(0, 3 - node.softdrop):
             path.append(['down'])
+            locpath.append(node.piecelocation)
+            cppath.append(node.currentpiece)
         while node.parent is not None:
             path.append(node.previousaction)
             node = node.parent
+            locpath.append(node.piecelocation)
+            cppath.append(node.currentpiece)
             #print(path)
         #print(path)
         path.reverse()
-        return path
+        locpath.reverse()
+        cppath.reverse()
+        return (path, locpath, cppath)
 
     

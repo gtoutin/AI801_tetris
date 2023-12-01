@@ -36,8 +36,8 @@ def CollisionDetection(board, currentpiece, piecelocation):
     #As such, it needs to be reversed for board purposes.
     #location = tetronimoes.conv_xy_rowcol(piecelocation)
     location = piecelocation
-    if location[0] == 4:
-        print(location)
+    #if location[0] == 4:
+    #    print(location)
     for row in range(0, 4):
         for col in range(0,4):
             x = location[0] + row
@@ -145,8 +145,8 @@ class UCTTetrisSolver:
         # breakpoint()
         # mask is list of lists
         #print(piece, location)
-        if location == (4,17):
-            print("Place_Piece: Location (4,17)")
+        #if location == (4,17):
+        #    print("Place_Piece: Location (4,17)")
         mask = tetronimoes.TETRO_MASKS[piece]
         # overlay mask on board at location
         # check for any errors
@@ -162,8 +162,8 @@ class UCTTetrisSolver:
                     # it's -trans_rowcol because we are moving the board, not the piece
                     #new_row, new_col = location[0]+row-trans_rowcol[0], location[1]+col-trans_rowcol[1]
                     new_row, new_col = location[0]+row, location[1]+col
-                    if location == (4,17):
-                        print(new_row, new_col)
+                    #if location == (4,17):
+                    #    print(new_row, new_col)
                     #print(new_row, new_col)
                     board[new_row][new_col] += mask[row][col]
                 except IndexError: #finally:
@@ -180,7 +180,7 @@ class UCTTetrisSolver:
         # didn't overlap this piece with others
         #for row in board:
         #    print(row)
-        print()
+        #print()
         assert(all(2 not in row for row in board))
         # return that board
         return board, True
@@ -232,14 +232,16 @@ class UCTTetrisSolver:
         #location = [location[0], location[1]]
         return new_board, location, ok, num_completed
 
-    def run_sim(self, board, num_completed):
+    def run_sim(self, board, num_completed, num_pieces):
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
         piece already placed, so start with the next piece.'''
         # get next piece
+        assert num_pieces >= 2
         pieces = [self.state.next_piece]
         # get 3 more random pieces
-        for _ in range(3):
-            pieces.append(random.choice(PIECES))
+        if num_pieces > 2:
+            for _ in range(num_pieces - 2):
+                pieces.append(random.choice(PIECES))
         
         # for each piece, drop them in random places
         for piece in pieces:
@@ -254,7 +256,7 @@ class UCTTetrisSolver:
         # breakpoint()
         return self.score_state(board, num_completed)
 
-    def run(self, curr_piece, curr_board):
+    def run(self, curr_piece, curr_board, num_sims, num_pieces):
         '''Returns piece and location of highest score'''
         curr_board = tuple_to_list_board(curr_board)
 
@@ -278,10 +280,10 @@ class UCTTetrisSolver:
                 #for row in curr_board:
                 #    print(row)
                 board, location, ok, num_completed = self.drop_piece(piece, copy.deepcopy(curr_board), x)
-                if x == 4:
-                    print(piece)
-                    print(ok)
-                    print("Num Completed:" + str(num_completed))
+                #if x == 4:
+                    #print(piece)
+                    #print(ok)
+                    #print("Num Completed:" + str(num_completed))
                 #for row in board:
                 #    print(row)
                 # breakpoint()
@@ -290,7 +292,7 @@ class UCTTetrisSolver:
                     continue
                 assert(board != curr_board)
                 # run one or 10 or whatever number of sims
-                scores = [self.run_sim(board, num_completed) for _ in range(10)]
+                scores = [self.run_sim(board, num_completed, num_pieces) for _ in range(num_sims)]
                 # average the scores
                 avg_score = sum(scores)/len(scores)
                 
@@ -314,6 +316,7 @@ class UCTTetrisSolver:
         # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
+        all_moves.reverse()
         return all_moves
 
 # generate all possible end states for a given piece
