@@ -61,7 +61,21 @@ def get_rotations(piece):
     if piece[0] in ['J', 'T', 'L']:
         return [piece[0]+rot for rot in ['u', 'd', 'l', 'r']]
 
-
+class BestPiece:
+    def __init__(self, piece, location, score):
+        self.piece = piece
+        self.location = location
+        self.score = score
+    
+    def __lt__(self, other):
+        return self.score < other.score
+    
+    def __gt__(self, other):
+        return self.score > other.score
+    
+    def __eq__(self, other):
+        return self.score == other.score
+    
 class UCTTetrisSolver:
     def __init__(self, board, state):
         # current board. copy this when doing calculations instead of modifying this copy
@@ -78,6 +92,8 @@ class UCTTetrisSolver:
         j = location[1]
         try:
             if direction == "up":
+                if (i-1) < 0:
+                    return 0
                 return board[i-1][j]
             elif direction == "down":
                 return board[i+1][j]
@@ -116,6 +132,25 @@ class UCTTetrisSolver:
                 num_holes += is_hole
         return num_holes
 
+    def num_covered_holes(self, board):
+        '''Return number of covered holes in the board'''
+        b = copy.deepcopy(board)
+        num_holes = 0
+        for i, row in enumerate(b):
+            for j, block in enumerate(row):
+                # solid blocks aren't holes
+                if block == 1:
+                    continue
+                # test if pixel above test pixel is blocked
+                is_hole = self.get_adjacent_block(b, (i,j), "up")
+                num_holes += is_hole
+                if is_hole == 1:
+                    #If a pixel is a hole, then all empty pixels below it are also holes
+                    #Thus, treat it as a solid block for testing purposes
+                    b[i][j] = 1
+                    #print(i,j)
+        return num_holes
+    
     def block_height(self, board):
         '''Return height of blocks placed on board. Higher number is worse'''
         #print(board)
@@ -125,16 +160,18 @@ class UCTTetrisSolver:
             if 1 in row:
                 #print(BOARD_HEIGHT)
                 #print(i)
-                return BOARD_HEIGHT - i
+                return BOARD_HEIGHT - (i + 1)
+        return 0
 
     def score_state(self, board, num_completed):
         '''Calculate the utility of a given state.'''
         # number of wells is bad bc they can only be removed w i piece
         # height of cols
         # diff in height of cols on board
-        temp = (num_completed * 20) - 2 * self.num_holes(board)
+        temp = (num_completed * 20) - (2 * self.num_covered_holes(board))
         #print(temp)
-        return temp - self.block_height(board)
+        temp -= (3 * self.block_height(board))
+        return temp
         
     def place_piece(self, piece, board, location):
         '''Return a board with the piece placed at the specified location. Takes (x,y) location.
@@ -236,8 +273,10 @@ class UCTTetrisSolver:
         '''Run a sim. 5 pieces ahead. The state passed in has the current 
         piece already placed, so start with the next piece.'''
         # get next piece
-        assert num_pieces >= 2
-        pieces = [self.state.next_piece]
+        assert num_pieces >= 1
+        pieces = []
+        if num_pieces > 1:
+            pieces.append(self.state.next_piece)
         # get 3 more random pieces
         if num_pieces > 2:
             for _ in range(num_pieces - 2):
@@ -260,11 +299,12 @@ class UCTTetrisSolver:
         '''Returns piece and location of highest score'''
         curr_board = tuple_to_list_board(curr_board)
 
-        best_move = {
-            "piece": curr_piece,
-            "location": (-1, -1),
-            "score": -1000
-        }
+        best_move = BestPiece(curr_piece, (-1, -1), -1000)
+        #{
+        #    "piece": curr_piece,
+        #    "location": (-1, -1),
+        #    "score": -1000
+        #}
         num_completed = 0
         all_moves = []
         all_moves.append(best_move)
@@ -301,13 +341,14 @@ class UCTTetrisSolver:
                 #print(avg_score > best_move['score'])
                 
                 # if this score is better than current score, store this move
-                if avg_score > best_move['score']:
-                    best_move = {
-                        "piece": piece,
-                        "location": location,
-                        "score": avg_score
-                    }
-                    all_moves.append(best_move)
+                #if avg_score > best_move['score']:
+                best_move = BestPiece(piece, location, avg_score)
+                #{
+                #    "piece": piece,
+                #    "location": location,
+                #    "score": avg_score
+                #}
+                all_moves.append(best_move)
                     #print(all_moves)
                     
                     #print("better move found")
@@ -316,7 +357,7 @@ class UCTTetrisSolver:
         # possible for future: return ALL possible moves ranked by score if A* says not possible
         # brute force each of the 5 pieces and then score
         # use formula
-        all_moves.reverse()
+        all_moves.sort(reverse=True)
         return all_moves
 
 # generate all possible end states for a given piece
