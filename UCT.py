@@ -295,7 +295,7 @@ class UCTTetrisSolver:
         # breakpoint()
         return self.score_state(board, num_completed)
 
-    def run(self, curr_piece, curr_board, num_sims, num_pieces):
+    def run(self, curr_piece, curr_board, num_sims, num_pieces, num_c):
         '''Returns piece and location of highest score'''
         curr_board = tuple_to_list_board(curr_board)
 
@@ -332,9 +332,15 @@ class UCTTetrisSolver:
                     continue
                 assert(board != curr_board)
                 # run one or 10 or whatever number of sims
-                scores = [self.run_sim(board, num_completed, num_pieces) for _ in range(num_sims)]
+                if num_pieces > 1:
+                    result = self.run(self.state.next_piece, board, num_sims, (num_pieces - 1), num_completed + num_c)
+                    avg_score = result[0].score
+                else:
+                    avg_score = self.score_state(board, num_completed + num_c)
+                #Using num_sims method
+                #scores = [self.run_sim(board, num_completed, num_pieces) for _ in range(num_sims)]
                 # average the scores
-                avg_score = sum(scores)/len(scores)
+                #avg_score = sum(scores)/len(scores)
                 
                 #print(piece, x, avg_score, location)
                 #print(avg_score, best_move['score'])
