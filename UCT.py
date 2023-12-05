@@ -163,6 +163,26 @@ class UCTTetrisSolver:
                 return BOARD_HEIGHT - (i + 1)
         return 0
 
+    def find_depth(self, board, location):
+        '''Given the location of the top location of a well, find how deep the well is'''
+
+
+    def well_score(self, board):
+        '''Return sum of depth of wells (1-block spaces touching the walls)'''
+        b = copy.deepcopy(board)
+        # left side
+        # right side
+        # find lowest empty space
+        depth = 0
+        for side in [0, BOARD_WIDTH-1]:
+            for i in range(BOARD_HEIGHT):
+                # start at top and go down until hit something
+                if self.get_adjacent_block(b, (i, side), "down"):
+                    depth += i
+                    break
+        return depth
+            
+
     def score_state(self, board, num_completed):
         '''Calculate the utility of a given state.'''
         # number of wells is bad bc they can only be removed w i piece
@@ -171,6 +191,7 @@ class UCTTetrisSolver:
         temp = (num_completed * 20) - (2 * self.num_covered_holes(board))
         #print(temp)
         temp -= (3 * self.block_height(board))
+        temp -= self.well_score(board)
         return temp
         
     def place_piece(self, piece, board, location):
