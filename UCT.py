@@ -98,8 +98,12 @@ class UCTTetrisSolver:
             elif direction == "down":
                 return board[i+1][j]
             elif direction == "left":
+                if (j-1) < 0:
+                    return 1
                 return board[i][j-1]
             elif direction == "right":
+                if (j+1) >= BOARD_WIDTH:
+                    return 1
                 return board[i][j+1]
             else:
                 raise ValueError("direction is not up, down, left, or right.")
@@ -177,9 +181,10 @@ class UCTTetrisSolver:
         for side in [0, BOARD_WIDTH-1]:
             for i in range(BOARD_HEIGHT):
                 # start at top and go down until hit something
-                if self.get_adjacent_block(b, (i, side), "down"):
-                    depth += i
-                    break
+                if self.get_adjacent_block(b, (i, side), "left") and self.get_adjacent_block(b, (i, side), "right"):
+                    depth += 1
+                    if self.get_adjacent_block(b, (i, side), "down"):
+                        break
         return depth
             
 
@@ -256,6 +261,11 @@ class UCTTetrisSolver:
         for y in reversed(range(BOARD_HEIGHT)):
             #print(y)
             if CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y)):
+                if not (CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x + 1, tetronimoes.TETRO_TRANS[piece][1] + y))
+                        or CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x - 1, tetronimoes.TETRO_TRANS[piece][1] + y))
+                        or CollisionDetection(board, piece, (tetronimoes.TETRO_TRANS[piece][0] + x, tetronimoes.TETRO_TRANS[piece][1] + y - 1))):
+                    print("Avoided impossible position")
+                    continue
                 # breakpoint()
                 # save board state so it will be accurate when collision is detected
                 location = (x,y)
